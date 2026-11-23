@@ -116,6 +116,12 @@
   /* ── 📱 Phone (Compact, short side < 600): margin 16 ── */
   @media (max-width: 599px), (max-height: 599px) and (orientation: landscape) {
     :root { --margin: 16px; --nav-pad: 16px; }
+    /* phone: touch target 48, visible button 40 (Accessibility: icon smaller than target → hit area does the rest) */
+    .hit { width: 48px; height: 48px; }
+    .btn { width: 40px; height: 40px; }
+    .btn img { width: 32px; height: 32px; }
+    .btn.eye img { width: 22px; height: 22px; }
+    .fertig { min-width: 80px; min-height: 40px; padding: 6px 12px; font-size: 20px; line-height: 28px; }
   }
 
   /* ── 🔄 Landscape: avatar left, content right ── */
