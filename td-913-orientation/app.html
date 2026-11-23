@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<title>TD-913 Orientation</title>
+<!--
+  TD-913 orientation prototype (CD, 2026-11-23). Static: only the layout change portrait <-> landscape.
+  Source frames (Figma TD-758): 8537:5733 "Skin 01 · Portrait Tablet proto", 8537:5617 "Skin 01 · Landscape Proto".
+  Values from the tablet portrait frame (hit area 56, buttons 48, gaps 16) for all sizes (CD).
+  Margins: Shared/Breakpoints (Compact 16 · Medium / Expanded 24) + Shared/Design System/Safe Areas.
+  Layout follows the window shape: portrait = avatar on top, content below; landscape = avatar left, content right.
+-->
+<style>
+  :root {
+    --black: #000; --gray9: #1c1c1c; --gray6: #393939; --gray4: #808080; --gray3: #ccc;
+    --white: #fff; --orange: #f50;
+    --margin: 24px;          /* Medium / Expanded; Compact (phone) = 16, see media queries */
+    --gap: 16px;
+    --nav-pad: 20px;
+    --main: 96px;            /* main icon size (max) */
+    --item: 126px;           /* item size (max) */
+    --sub: 56px;
+    /* safe areas: real device insets (notch, home indicator); 0 in a normal browser tab */
+    --sa-t: env(safe-area-inset-top, 0px);
+    --sa-b: env(safe-area-inset-bottom, 0px);
+    --sa-l: env(safe-area-inset-left, 0px);
+    --sa-r: env(safe-area-inset-right, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--black); overflow: hidden; }
+  body {
+    font-family: "Gibson", -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: var(--white); user-select: none; -webkit-user-select: none;
+  }
+  img { display: block; -webkit-user-drag: none; }
+
+  .app { height: 100%; display: flex; flex-direction: column; }
+
+  /* ── Navigation bar: back left, Fertig right (hit areas 56) ── */
+  .nav {
+    flex: none; display: flex; justify-content: space-between; align-items: center;
+    padding: var(--sa-t) calc(var(--nav-pad) + var(--sa-r)) 0 calc(var(--nav-pad) + var(--sa-l));
+    background: var(--black);
+  }
+  .hit { width: 56px; height: 56px; display: grid; place-items: center; flex: none; }
+  .hit.done { width: auto; padding: 0 4px; }
+  .btn {
+    background: var(--white); border-radius: 2px; width: 48px; height: 48px;
+    display: grid; place-items: center;
+  }
+  .btn img { width: 40px; height: 40px; }
+  .btn.eye img { width: 28px; height: 28px; }
+  .fertig {
+    background: var(--white); color: var(--black); border-radius: 4px;
+    min-width: 98px; min-height: 48px; padding: 8px 16px;
+    font-size: 25px; line-height: 32px; letter-spacing: .15px; font-weight: 600; text-align: center;
+  }
+
+  /* ── Body: avatar + content ── */
+  .body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; background: var(--black); }
+
+  .avatar {
+    position: relative; background: var(--gray9); overflow: hidden;
+    flex: 0 0 45%;                       /* portrait: 432 / 960 in Figma ≈ 45 % */
+    display: grid; place-items: center;
+  }
+  .avatar .pig { position: absolute; inset: 4% 0 4% 0; width: 100%; height: 92%; object-fit: contain; }
+  .avatar .icons {
+    position: absolute; left: 0; right: 0; bottom: 8px;
+    display: flex; justify-content: space-between;
+    padding: 0 calc(16px + var(--sa-r)) 0 calc(16px + var(--sa-l));
+  }
+
+  .content {
+    flex: 1; min-height: 0; position: relative; background: var(--gray9);
+    overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+    padding: 16px calc(var(--margin) + var(--sa-r)) calc(16px + var(--sa-b)) calc(var(--margin) + var(--sa-l));
+    display: flex; flex-direction: column; gap: 16px;
+    scrollbar-width: thin; scrollbar-color: var(--gray3) var(--gray6);
+  }
+  .content::-webkit-scrollbar { width: 4px; }
+  .content::-webkit-scrollbar-track { background: var(--gray6); }
+  .content::-webkit-scrollbar-thumb { background: var(--gray3); border-radius: 100px; }
+
+  /* tiles: fill the row, never bigger than the Figma size */
+  .main { display: grid; grid-template-columns: repeat(5, minmax(0, var(--main))); justify-content: space-between; gap: 8px; }
+  .tile {
+    aspect-ratio: 1; border: 1px solid var(--gray4); border-radius: 2px; background: var(--gray9);
+    padding: 4.2%; display: grid; place-items: center;
+  }
+  .tile.on { background: var(--black); border-color: var(--orange); }
+  .tile img { width: 100%; height: 100%; object-fit: cover; }
+
+  .subs { display: flex; gap: 16px; }
+  .sub {
+    width: var(--sub); height: var(--sub); flex: none; border: 1px solid var(--gray4); border-radius: 2px;
+    background: var(--gray9); display: grid; place-items: center;
+  }
+  .sub.on { background: var(--orange); border-color: var(--white); }
+  .sub img { width: 40px; height: 40px; }
+
+  .items { display: grid; grid-template-columns: repeat(4, minmax(0, var(--item))); justify-content: space-between; gap: 16px; }
+  .item {
+    aspect-ratio: 1; border: 1px solid var(--gray4); border-radius: 2px; background: var(--gray9);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+    color: var(--gray4); font-size: 14.4px; line-height: 21.6px;
+  }
+  .item.on { background: var(--black); border-color: var(--orange); color: var(--white); }
+  .item svg { width: 24px; height: 24px; }
+
+  /* ── 📱 Phone (Compact, short side < 600): margin 16 ── */
+  @media (max-width: 599px), (max-height: 599px) and (orientation: landscape) {
+    :root { --margin: 16px; --nav-pad: 16px; }
+  }
+
+  /* ── 🔄 Landscape: avatar left, content right ── */
+  @media (orientation: landscape) {
+    .body { flex-direction: row; gap: 8px; }
+    .avatar { flex: 0 0 40%; }           /* 235 / 600 in Figma ≈ 40 % */
+    .avatar .icons { padding: 0 16px 0 calc(16px + var(--sa-l)); bottom: calc(8px + var(--sa-b)); }
+    .nav { padding-top: max(var(--sa-t), 8px); }
+  }
+  /* phone landscape: sides ≥ 48 (Android) / safe area (iPhone notch), Safe Areas note */
+  @media (orientation: landscape) and (max-height: 599px) {
+    .nav { padding-left: max(48px, var(--sa-l)); padding-right: max(48px, var(--sa-r)); }
+    .avatar .icons { padding-left: max(48px, var(--sa-l)); }
+    .content { padding-right: max(48px, var(--sa-r)); padding-left: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="nav">
+    <div class="hit"><div class="btn"><img src="assets/chevron-back.svg" alt="Zurück"></div></div>
+    <div class="hit done"><div class="fertig">Fertig</div></div>
+  </div>
+
+  <div class="body">
+    <div class="avatar">
+      <img class="pig" src="assets/pig.png" alt="Avatar">
+      <div class="icons">
+        <div class="hit"><div class="btn eye"><img src="assets/ico-b.svg" alt="Sichtbarkeit"></div></div>
+        <div class="hit"><div class="btn"><img src="assets/ico-a.svg" alt="Fokus"></div></div>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+      <div class="main">
+        <div class="tile on"><img src="assets/main-1.png" alt=""></div>
+        <div class="tile"><img src="assets/main-2.png" alt=""></div>
+        <div class="tile"><img src="assets/main-3.png" alt=""></div>
+        <div class="tile"><img src="assets/main-4.png" alt=""></div>
+        <div class="tile"><img src="assets/main-5.png" alt=""></div>
+      </div>
+      <div class="subs">
+        <div class="sub on"><img src="assets/sub-1.svg" alt=""></div>
+        <div class="sub"><img src="assets/sub-2.svg" alt=""></div>
+        <div class="sub"><img src="assets/sub-3.svg" alt=""></div>
+      </div>
+      <div class="items" id="items"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Values (tune here) ──
+  const ITEM_COUNT = 16;   // 4 rows → the list scrolls in every layout
+
+  const photo = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h14q.825 0 1.413.588T21 5v14q0 .825-.587 1.413T19 21zm0-2h14V5H5zm1-2h12l-3.75-5-3 4L9 13zm-1 2V5z"/></svg>';
+  const items = document.getElementById('items');
+  for (let i = 0; i < ITEM_COUNT; i++) {
+    const d = document.createElement('div');
+    d.className = 'item' + (i === 0 ? ' on' : '');
+    d.innerHTML = photo + '<span>Item</span>';
+    items.appendChild(d);
+  }
+
+  // Mouse = finger (Mac only): drag scrolls the content list
+  const c = document.getElementById('content');
+  let y0 = null, s0 = 0;
+  c.addEventListener('mousedown', e => { y0 = e.clientY; s0 = c.scrollTop; c.style.cursor = 'grabbing'; });
+  addEventListener('mousemove', e => { if (y0 !== null) c.scrollTop = s0 - (e.clientY - y0); });
+  addEventListener('mouseup', () => { y0 = null; c.style.cursor = ''; });
+</script>
+</body>
+</html>
