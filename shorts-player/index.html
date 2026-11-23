@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shorts Player prototype</title>
+<style>
+  :root {
+    --purple: #8c00f5;          /* prim-shorts */
+    --gray8: #2c2c2c;
+    --t-glass: 260ms;
+    --t-title: 320ms;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #000; overflow: hidden; }
+  body { display: flex; justify-content: center; font-family: "Gibson", -apple-system, "Helvetica Neue", Arial, sans-serif; font-weight: 600; color: #fff; user-select: none; }
+
+  .phone { position: relative; width: 100%; max-width: 430px; height: 100%; overflow: hidden; background: #000; }
+
+  /* ---------- video ---------- */
+  video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+  /* ---------- dim overlay (only when paused / buffering): black 50 %, replaces the glass (CD, 2026-11-20) ---------- */
+  /* Done on the video itself (brightness 0.5 = black 50 % on top): a separate layer over a <video>
+     is not always drawn in Chromium (video overlay plane) → that was the black / missing glass. */
+  .glass { display: none; }
+  video { filter: brightness(1); transition: filter var(--t-glass) ease-out; }
+  .phone.show-glass video { filter: brightness(0.5); }
+
+  /* ---------- UI layer ---------- */
+  .ui { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; }
+  .statusbar { height: 62px; display: flex; align-items: center; justify-content: space-between; padding: 14px 32px 0 52px; font: 600 17px -apple-system, "SF Pro Text", sans-serif; }
+  .statusbar .icons { display: flex; gap: 6px; align-items: center; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 16px 0; }
+  .selector { height: 40px; display: flex; align-items: center; gap: 6px; padding: 6px; background: var(--gray8); border-radius: 2px; font-size: 19.95px; line-height: 26px; white-space: nowrap; }
+  .selector img { width: 26px; height: 26px; }
+  .close { width: 48px; height: 48px; border: 0; border-radius: 4px; background: var(--purple); display: grid; place-items: center; cursor: pointer; }
+  .close img { width: 20.57px; height: 20.57px; }
+  .flex { flex: 1; }   /* tap area on the video */
+
+  .footer { display: flex; flex-direction: column; gap: 16px; padding: 0 16px 8px; }
+  .footer-top { display: flex; align-items: flex-end; justify-content: space-between; }
+  .property { height: 40px; display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; background: rgba(255,255,255,0.5); border-radius: 4px; max-width: 267px; }
+  .property img { width: 32px; height: 32px; object-fit: cover; }
+  .property span { color: var(--purple); font-size: 25px; line-height: 32px; letter-spacing: 0.15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .actions canvas { display: block; width: 48px; height: 112px; }
+
+  /* Title: height animates 64 ↔ 96 px (2 ↔ 3 lines); the "…" line clamp follows the height */
+  .title {
+    font-size: 25px; line-height: 32px; letter-spacing: 0.15px; cursor: pointer;
+    height: 64px; overflow: hidden;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    transition: height var(--t-title) var(--ease-out);
+  }
+  .title.lines3 { -webkit-line-clamp: 3; }
+  .title.open { height: 96px; }
+
+  .progress { height: 40px; display: flex; align-items: center; position: relative; }
+  .progress .base { width: 100%; height: 2px; background: #fff; }
+  .progress .fill { position: absolute; left: 0; top: 50%; height: 4px; transform: translateY(-50%); background: var(--purple); width: 0; }
+  .home-ind { height: 34px; }
+
+  /* ---------- centre: play / pause + buffer (Rive) ---------- */
+  .centre { position: absolute; left: 50%; top: 50%; z-index: 3; transform: translate(-50%, -50%); pointer-events: none; }
+  #playCanvas { display: block; width: 80px; height: 80px; pointer-events: auto; transition: opacity 250ms ease-out, transform 250ms ease-out; }
+  /* while playing, the pause button fades out (tap on the video pauses) */
+  .phone.hide-btn #playCanvas { opacity: 0; transform: scale(0.9); pointer-events: none; }
+  #bufferCanvas { position: absolute; left: 50%; top: 50%; width: 88px; height: 88px; transform: translate(-50%, -50%); opacity: 0; pointer-events: none; transition: opacity 180ms ease-out; }
+  .phone.buffering #playCanvas { opacity: 0; transform: scale(0.8); pointer-events: none; }
+  .phone.buffering #bufferCanvas { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <video id="video" src="assets/shorts_player_video.mp4#t=0.001" poster="assets/img/short_thumbnail.jpg" playsinline preload="auto"></video>
+  <div class="glass" id="glass"></div>
+
+  <div class="ui">
+    <div class="statusbar">
+      <span>9:41</span>
+      <span class="icons">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="#fff"><path d="M8.5 2.3c2.4 0 4.6.9 6.2 2.5l1.2-1.2C14 1.7 11.4.6 8.5.6S3 1.7 1.1 3.6l1.2 1.2C3.9 3.2 6.1 2.3 8.5 2.3zm0 3.4c1.5 0 2.8.6 3.8 1.5l1.2-1.2C12.2 4.8 10.4 4 8.5 4S4.8 4.8 3.5 6l1.2 1.2c1-.9 2.3-1.5 3.8-1.5zm0 3.4c.6 0 1.1.2 1.5.6L8.5 11.2 7 9.7c.4-.4.9-.6 1.5-.6z"/></svg>
+        <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#fff" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#fff"/><rect x="25" y="4.5" width="1.5" height="4" rx=".75" fill="#fff" opacity=".4"/></svg>
+      </span>
+    </div>
+    <div class="header-row">
+      <div class="selector"><img src="assets/img/emoji_party.svg" alt="">Heute exklusiv</div>
+      <button class="close" id="closeBtn" aria-label="Close (restart demo)"><img src="assets/img/ico_close.svg" alt=""></button>
+    </div>
+
+    <div class="flex" id="tapArea"></div>
+
+    <div class="footer">
+      <div class="footer-top">
+        <div class="property"><img src="assets/img/angelo_property.png" alt=""><span>Property title short</span></div>
+        <div class="actions"><canvas id="thumbsCanvas"></canvas></div>
+      </div>
+      <p class="title" id="title">Asset title short Asset title short Asset title short Asset title short Asset title short</p>
+      <div class="progress"><div class="base"></div><div class="fill" id="fill"></div></div>
+    </div>
+    <div class="home-ind"></div>
+  </div>
+
+  <div class="centre">
+    <canvas id="playCanvas"></canvas>
+    <canvas id="bufferCanvas"></canvas>
+  </div>
+</div>
+
+<script src="assets/runtime/rive.js"></script>
+<script>
+/* =========================================================
+   Shorts Player prototype — timing values (tune in feedback)
+   ========================================================= */
+const BUFFER_AT   = 5.0;   // s into the video: fake connection loss
+const BUFFER_FOR  = 3000;  // ms of buffering
+const BUFFER_OUT  = 350;   // ms for the buffer animation to leave before play resumes
+
+rive.RuntimeLoader.setWasmUrl('assets/runtime/rive.wasm');
+rive.Rive.suppressDeprecationWarnings = ['default-state-machine'];
+
+const phone = document.getElementById('phone');
+const video = document.getElementById('video');
+const glass = document.getElementById('glass');
+const title = document.getElementById('title');
+const fill  = document.getElementById('fill');
+
+/* ---------- Rive ---------- */
+function riveOn(canvas, src, artboard, sm, onReady) {
+  const r = new rive.Rive({
+    src, canvas, artboard, stateMachines: sm, autoplay: true, autoBind: true,
+    layout: new rive.Layout({ fit: rive.Fit.Contain, alignment: rive.Alignment.Center }),
+    onLoad: () => { r.resizeDrawingSurfaceToCanvas(); onReady && onReady(r); }
+  });
+  return r;
+}
+
+let playVM = null, bufferVM = null;
+let state = 'paused';          // 'playing' | 'paused' | 'buffering'
+let bufferDone = false;
+let syncing = false;           // true while JS sets isPlaying (ignore the echo)
+
+riveOn(document.getElementById('playCanvas'), 'assets/ios_shorts_player.riv', 'play_pause', 'SMplayPause', r => {
+  playVM = r.viewModelInstance.boolean('isPlaying');
+  setPlayingVM(false);   // start: paused → ▶ icon
+  // The Rive button has its own tap listener; follow its value.
+  playVM.on(() => { if (!syncing) (riveSaysPlaying() ? play() : pause()); });
+});
+riveOn(document.getElementById('thumbsCanvas'), 'assets/ios_shorts_player.riv', 'ios_Thumbs', 'SMthumbs');
+riveOn(document.getElementById('bufferCanvas'), 'assets/bufferAnim.riv', 'buffer', 'SMbuffering', r => {
+  bufferVM = r.viewModelInstance.boolean('isBuffering');
+  bufferVM.value = false;
+});
+
+/* ⚠️ In ios_shorts_player.riv, isPlaying = true shows the ▶ icon (Figma: playing shows ⏸).
+   So the prototype reads it inverted. If the .riv is fixed, set this to false. */
+const RIVE_IS_PLAYING_INVERTED = true;
+function riveSaysPlaying() { return RIVE_IS_PLAYING_INVERTED ? !playVM.value : playVM.value; }
+function setPlayingVM(playing) {
+  if (!playVM) return;
+  const v = RIVE_IS_PLAYING_INVERTED ? !playing : playing;
+  if (playVM.value === v) return; syncing = true; playVM.value = v; syncing = false;
+}
+
+/* ---------- title 2 ↔ 3 lines ---------- */
+let titleTimer = null;
+function setTitle(open) {
+  clearTimeout(titleTimer);
+  if (open) { title.classList.add('lines3'); title.classList.add('open'); }   // 3rd line slides in
+  else {
+    title.classList.remove('open');                                            // height shrinks first,
+    titleTimer = setTimeout(() => title.classList.remove('lines3'), 320);      // then the "…" appears
+  }
+}
+
+/* ---------- pause button: fades out while playing ---------- */
+const HIDE_BTN_AFTER = 700;   // ms after play (Rive ▶ → ⏸ animation has time to play)
+let btnTimer = null;
+function showBtn() { clearTimeout(btnTimer); phone.classList.remove('hide-btn'); }
+function hideBtnSoon() { clearTimeout(btnTimer); btnTimer = setTimeout(() => { if (state === 'playing') phone.classList.add('hide-btn'); }, HIDE_BTN_AFTER); }
+
+/* ---------- states ---------- */
+function play() {
+  if (state === 'buffering') return;
+  if (video.ended) { video.currentTime = 0; bufferDone = false; }
+  state = 'playing';
+  setPlayingVM(true);
+  phone.classList.remove('show-glass');
+  video.play();
+  hideBtnSoon();
+}
+function pause() {
+  if (state === 'buffering') return;
+  state = 'paused';
+  video.pause();
+  setPlayingVM(false);
+  showBtn();
+  phone.classList.add('show-glass');
+}
+function startBuffering() {
+  state = 'buffering'; bufferDone = true;
+  video.pause();
+  phone.classList.add('show-glass', 'buffering');
+  if (bufferVM) bufferVM.value = true;
+  setTimeout(() => {
+    if (bufferVM) bufferVM.value = false;
+    setTimeout(() => {
+      phone.classList.remove('buffering');
+      state = 'paused';
+      play();
+    }, BUFFER_OUT);
+  }, BUFFER_FOR);
+}
+
+/* Fallback: if the Rive file had no own listener, a tap still toggles */
+let stateAtTap = null;
+document.getElementById('playCanvas').addEventListener('pointerdown', () => { stateAtTap = state; });
+document.getElementById('playCanvas').addEventListener('pointerup', () => {
+  setTimeout(() => { if (state !== stateAtTap) return; state === 'playing' ? pause() : play(); }, 120);
+});
+/* Title: only a tap opens / closes it (CD: never automatic; it's mostly for parents). Video keeps its state. */
+title.addEventListener('click', () => setTitle(!title.classList.contains('open')));
+document.getElementById('tapArea').addEventListener('click', () => { state === 'playing' ? pause() : play(); });
+document.getElementById('closeBtn').addEventListener('click', () => {   // demo reset
+  video.pause(); video.currentTime = 0; bufferDone = false; state = 'paused';
+  setPlayingVM(false); showBtn(); phone.classList.add('show-glass'); phone.classList.remove('buffering');
+  setTitle(false); if (bufferVM) bufferVM.value = false;
+});
+
+video.addEventListener('ended', () => {        // no loop
+  state = 'paused'; setPlayingVM(false); showBtn(); phone.classList.add('show-glass');
+});
+
+/* progress bar + buffer trigger */
+(function tick() {
+  if (video.duration) {
+    fill.style.width = (video.currentTime / video.duration * 100) + '%';
+    if (state === 'playing' && !bufferDone && video.currentTime >= BUFFER_AT) startBuffering();
+  }
+  requestAnimationFrame(tick);
+})();
+
+/* start: paused, dimmed, ▶ visible, title 2 lines (CD: the start must not show 3 lines) */
+phone.classList.add('show-glass');
+</script>
+</body>
+</html>

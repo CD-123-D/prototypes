@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preschool Menu Prototype</title>
+<!--
+  Phone frame for the Mac (CD, 2026-11-20): shows app.html (the real prototype) at iPhone size
+  390 × 844 in a normal browser window — no developer tools needed. Scales down if the window is lower.
+  On a real phone (narrow screen) it opens app.html directly, full screen.
+-->
+<script>
+  if (window.innerWidth < 500) location.replace('app.html' + location.search);
+</script>
+<style>
+  html, body { margin: 0; height: 100%; background: #1e1e1e; overflow: hidden; }
+  body { display: grid; place-items: center; }
+  iframe {
+    width: 390px; height: 844px; border: 0; background: #fff;
+    border-radius: 28px; box-shadow: 0 0 0 10px #000, 0 20px 60px rgba(0,0,0,.6);
+    transform-origin: center;
+  }
+</style>
+</head>
+<body>
+<iframe id="app" title="Preschool Menu prototype" allow="autoplay"></iframe>
+<script>
+  const f = document.getElementById('app');
+  const q = new URLSearchParams(location.search); q.set('v', Date.now());   // always the newest app.html (no cache)
+  f.src = 'app.html?' + q;
+  function fit() {
+    const s = Math.min(1, (innerHeight - 48) / 844, (innerWidth - 48) / 390);
+    f.style.transform = 'scale(' + s + ')';
+  }
+  fit(); addEventListener('resize', fit);
+</script>
+</body>
+</html>

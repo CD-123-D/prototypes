@@ -1,0 +1,257 @@
+<title>Preschool Menu Prototype</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+  UX Lab prototype — Preschool Menu (CD, 2026-11-19). See "Preschool Menu prototype.md".
+  One file for both uses: local server (Wi-Fi from the Mac) and the private Claude artifact
+  (the artifact wraps it in its own doctype/head/body, so there are none here).
+  Only the bottom menu (Rive) is interactive. Everything else is scenery from Figma
+  (Cristian Playground › " 🍏 home Base", node 2003:2672), repeated to fill the scroll.
+  Hidden A/B switch: long-press the search icon (1.5 s) → sound on / off. Or open with ?sound=off
+-->
+<style>
+  :root {
+    --orange: #ff6932;
+    --gray-3: #ccc;
+    --gray-5: #565656;
+    --white: #fff;
+    --top-nav: 56px;
+    --menu-bar: 66px; /* 2px accent line + 64px (Figma iOS Nav without home indicator) */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    color-scheme: light; /* single look: the TOGGO app has no dark mode */
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { padding-block: var(--safe-top) var(--safe-bottom); } /* same as the artifact skeleton */
+  html, body {
+    background: var(--white);
+    font-family: "Gibson", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+  img { display: block; -webkit-user-drag: none; pointer-events: none; }
+
+  /* Fixed background (does not scroll — same as the app) */
+  .bg {
+    position: fixed; z-index: 0;
+    top: calc(var(--safe-top) + var(--top-nav));
+    left: 50%; transform: translateX(-50%);
+    width: 752px; height: 752px; /* 744 + Figma inset 0.54% */
+  }
+  .bg img { width: 100%; height: 100%; }
+
+  /* Top nav (fixed) */
+  .top-nav {
+    position: fixed; z-index: 10; top: 0; left: 0; right: 0;
+    padding-top: var(--safe-top);
+    background: var(--white);
+    box-shadow: 0 4px 4px rgba(0,0,0,.15), 0 1px 1.5px rgba(0,0,0,.3);
+  }
+  .top-nav .row { height: var(--top-nav); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+  .top-nav .r { display: flex; gap: 16px; }
+  .top-nav .ico { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+  .top-nav .ico img { width: 40px; height: 40px; }
+
+  /* Scrolling content */
+  main {
+    position: relative; z-index: 1;
+    padding-top: var(--top-nav); /* :root already pads the safe areas */
+    padding-bottom: calc(var(--menu-bar) + 16px);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  /* Character row — horizontal scroll */
+  .chars {
+    display: flex; gap: 16px; align-items: flex-start;
+    overflow-x: auto; overflow-y: hidden;
+    padding: 0 16px 4px 16px;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .chars::-webkit-scrollbar { display: none; }
+  .chars::after { content: ""; flex: 0 0 1px; } /* right padding at the end */
+  .ch { position: relative; flex: 0 0 90px; width: 90px; height: 190px; }
+  .ch .back {
+    position: absolute; left: 0; top: 95px; width: 90px; height: 95px; border-radius: 16px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 2px 6px rgba(0,0,0,.15);
+  }
+  .ch .back img { width: 100%; height: 100%; object-fit: cover; }
+  .ch .cut { position: absolute; left: 0; top: 30px; width: 90px; height: 160px; overflow: hidden; border-radius: 0 0 16px 16px; }
+  .ch .cut img { width: 100%; height: 100%; object-fit: cover; }
+  .ch .cut.contain img { object-fit: contain; }
+  .ch .logo { position: absolute; left: 5px; top: 136px; width: 80px; height: 46px; overflow: hidden; }
+  .ch .logo img { width: 81.711px; height: 46px; object-fit: cover; }
+  .ch.all .back { background: var(--white); box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.15); }
+  .ch.all .inner {
+    position: absolute; left: 0; top: 95px; width: 90px; height: 95px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8.8px;
+  }
+  .ch.all .inner img { width: 40px; height: 40px; }
+  .ch.all .inner span { font-size: 11px; font-weight: 600; letter-spacing: -0.25px; color: var(--orange); white-space: nowrap; }
+
+  /* Video cards — vertical list */
+  .cards { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px 0; opacity: .9; }
+  .card { width: 343px; display: flex; flex-direction: column; gap: 8px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)) drop-shadow(0 1px 1.5px rgba(0,0,0,.15)); }
+  .thumb { position: relative; height: 201px; border: 8px solid var(--white); border-radius: 16px; overflow: hidden; background: var(--white); }
+  .thumb > img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+  .progress { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: var(--white); }
+  .progress::before { content: ""; position: absolute; left: 8px; right: 8px; top: 3px; height: 8px; border-radius: 4px; background: var(--gray-3); }
+  .progress::after { content: ""; position: absolute; left: 8px; top: 3px; height: 8px; width: 128.5px; border-radius: 4px; background: var(--orange); }
+  .asset-ico { position: absolute; left: 263px; top: 111px; width: 56px; height: 56px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)) drop-shadow(0 2px 3px rgba(0,0,0,.15)); }
+  .asset-ico img { width: 56px; height: 56px; }
+  .asset-ico.wide img { position: absolute; left: -10%; top: -7.5%; width: 120%; height: 120%; }
+  .tags { display: flex; gap: 4px; }
+  .tag { background: var(--white); border-radius: 6px; padding: 8px; font-size: 16px; line-height: 16px; font-weight: 600; letter-spacing: -0.31px; color: var(--gray-5); }
+
+  /* Bottom menu bar (fixed): white bar + orange accent line from Figma; Rive menu on top */
+  .menu-bar {
+    position: fixed; z-index: 10; left: 0; right: 0; bottom: 0;
+    height: calc(var(--menu-bar) + var(--safe-bottom));
+    background: var(--white);
+    border-top: 2px solid var(--orange);
+  }
+  /* Artboard ABmenuMain = 560 × 112, icons 80 × 80 → scale 0.7 at 390 px wide = icons 56 px (Figma). */
+  #menu {
+    position: absolute; left: 50%; transform: translateX(-50%); top: -3px; /* icons start 8px below the line, like Figma */
+    width: min(100%, 392px); aspect-ratio: 560 / 112; /* iPhone only for now: never bigger than scale 0.7 */
+    display: block; touch-action: manipulation;
+  }
+
+  /* A/B switch feedback (only for the moderator) */
+  .toast {
+    position: fixed; z-index: 20; top: calc(var(--safe-top) + var(--top-nav) + 8px); left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.75); color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600;
+    opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+
+<div class="bg"><img src="assets/img/bg-home.svg" alt=""></div>
+
+<header class="top-nav">
+  <div class="row">
+    <div class="ico" id="search"><img src="assets/img/ico-search.svg" alt=""></div>
+    <div class="r">
+      <div class="ico"><img src="assets/img/ico-more.svg" alt=""></div>
+      <div class="ico" aria-hidden="true">
+        <!-- SF Symbol person.fill in Figma → simple stand-in -->
+        <svg width="30" height="28" viewBox="0 0 30 28"><circle cx="15" cy="7.5" r="7" fill="#ff6932"/><path d="M1 27c0-6.5 6-11 14-11s14 4.5 14 11c0 .6-.4 1-1 1H2c-.6 0-1-.4-1-1z" fill="#ff6932"/></svg>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="chars" id="chars"></section>
+  <section class="cards" id="cards"></section>
+</main>
+
+<nav class="menu-bar"><canvas id="menu"></canvas></nav>
+<div class="toast" id="toast"></div>
+
+<script src="assets/runtime/rive.js"></script>
+<script>
+  // ---------- Scenery: characters (Alle Charaktere + 9 repeated = 10) ----------
+  const CHARACTERS = [
+    { back: { color: "#00e5b0" }, cut: "ch-cocomelon.png", logo: "ch-cocomelon-logo.png" },
+    { back: { img: "ch-peppa-bg.png" }, cut: "ch-peppa.png", contain: true, logo: "ch-peppa-logo.png" },
+    { back: { img: "ch-paw-bg.png" }, cut: "ch-paw.png", logo: "ch-paw-logo.png" },
+  ];
+  const chars = document.getElementById("chars");
+  chars.insertAdjacentHTML("beforeend",
+    `<div class="ch all"><div class="back"></div><div class="inner"><img src="assets/img/ico-all-characters.svg" alt=""><span>Alle Charaktere</span></div></div>`);
+  for (let i = 0; i < 9; i++) {
+    const c = CHARACTERS[i % CHARACTERS.length];
+    const back = c.back.img ? `<img src="assets/img/${c.back.img}" alt="">` : "";
+    const style = c.back.color ? ` style="background:${c.back.color}"` : "";
+    chars.insertAdjacentHTML("beforeend",
+      `<div class="ch"><div class="back"${style}>${back}</div>` +
+      `<div class="cut${c.contain ? " contain" : ""}"><img src="assets/img/${c.cut}" alt=""></div>` +
+      `<div class="logo"><img src="assets/img/${c.logo}" alt=""></div></div>`);
+  }
+
+  // ---------- Scenery: video cards (the 4 Figma cards repeated → 12) ----------
+  const CARDS = [
+    { img: "card-1.png", ico: "ico-card-video.svg", progress: true, tags: ["ab 6", "24:17"] },
+    { img: "card-2.png", ico: "ico-card-game.svg", wide: true, progress: false, tags: ["ab 6"] },
+    { img: "card-3.png", ico: "ico-card-audio.svg", wide: true, progress: true, tags: ["ab 6", "24:17"] },
+    { img: "card-3.png", ico: "ico-card-video.svg", progress: true, tags: ["ab 6", "24:17"] },
+  ];
+  const cards = document.getElementById("cards");
+  for (let i = 0; i < 12; i++) {
+    const c = CARDS[i % CARDS.length];
+    cards.insertAdjacentHTML("beforeend",
+      `<div class="card"><div class="thumb"><img src="assets/img/${c.img}" alt="">` +
+      (c.progress ? `<div class="progress"></div>` : "") +
+      `<div class="asset-ico${c.wide ? " wide" : ""}"><img src="assets/img/${c.ico}" alt=""></div></div>` +
+      `<div class="tags">${c.tags.map(t => `<span class="tag">${t}</span>`).join("")}</div></div>`);
+  }
+
+  // ---------- Rive menu (the only interactive part) ----------
+  rive.RuntimeLoader.setWasmUrl("assets/runtime/rive.wasm");
+  const canvas = document.getElementById("menu");
+  let soundOn = new URLSearchParams(location.search).get("sound") !== "off";
+
+  const menu = new rive.Rive({
+    src: "assets/preschoolmenuTestEmbed.riv",
+    canvas,
+    artboard: "ABmenuMain",
+    stateMachine: "mainMenuSM",
+    autoplay: true,
+    autoBind: true, // binds the default VMmenuMain instance (listMainMenu, indexNum, navScale…)
+    layout: new rive.Layout({ fit: rive.Fit.Contain, alignment: rive.Alignment.TopCenter }),
+    onLoad: () => {
+      menu.resizeDrawingSurfaceToCanvas();
+      menu.volume = soundOn ? 1 : 0;
+      window.menu = menu; // for debugging
+    },
+    onLoadError: (e) => console.error("Rive load error", e),
+  });
+  window.addEventListener("resize", () => menu.resizeDrawingSurfaceToCanvas());
+
+  // ---------- Hidden A/B switch: long-press the search icon ----------
+  const toast = document.getElementById("toast");
+  function showToast(text) {
+    toast.textContent = text; toast.classList.add("show");
+    clearTimeout(showToast.t); showToast.t = setTimeout(() => toast.classList.remove("show"), 1200);
+  }
+  let pressTimer;
+  const search = document.getElementById("search");
+  search.addEventListener("pointerdown", () => {
+    pressTimer = setTimeout(() => {
+      soundOn = !soundOn;
+      menu.volume = soundOn ? 1 : 0;
+      showToast(soundOn ? "🔊 Sound on" : "🔇 Sound off");
+    }, 1500);
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => search.addEventListener(ev, () => clearTimeout(pressTimer)));
+
+  // ---------- Mouse = finger (Mac demo, CD 2026-11-20) ----------
+  // Drag with the mouse scrolls like a finger: up / down = page, left / right on the character row = row.
+  // Only for a mouse; on a real phone touch scrolling is native and this code does nothing.
+  // Round "finger" cursor, like the phone view in Chrome's developer tools.
+  if (matchMedia("(pointer: fine)").matches) {
+    document.documentElement.style.cursor =
+      "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22><circle cx=%2216%22 cy=%2216%22 r=%2213%22 fill=%22rgba(0,0,0,0.25)%22 stroke=%22white%22 stroke-width=%222%22/></svg>') 16 16, pointer";
+    const mainEl = document.querySelector("main");
+    let drag = null;
+    mainEl.addEventListener("pointerdown", e => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      drag = { x: e.clientX, y: e.clientY, row: e.target.closest(".chars"), axis: null, moved: false };
+    });
+    addEventListener("pointermove", e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.axis && Math.hypot(dx, dy) > 4) drag.axis = (drag.row && Math.abs(dx) > Math.abs(dy)) ? "x" : "y";
+      if (!drag.axis) return;
+      drag.moved = true;
+      if (drag.axis === "x") drag.row.scrollLeft -= dx; else scrollBy(0, -dy);
+      drag.x = e.clientX; drag.y = e.clientY;
+    });
+    addEventListener("pointerup", () => { drag = null; });
+    // no text / image selection while dragging
+    mainEl.addEventListener("dragstart", e => e.preventDefault());
+  }
+</script>
