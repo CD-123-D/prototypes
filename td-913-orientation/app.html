@@ -10,6 +10,7 @@
 <title>TD-913 Orientation</title>
 <!--
   TD-913 orientation prototype (CD, 2026-11-23). Static: only the layout change portrait <-> landscape.
+  v0.2 (2026-11-26): fixed gap 16 in all rows; bigger screens = more item columns, not bigger gaps (Daniela's feedback).
   Source frames (Figma TD-758): 8537:5733 "Skin 01 · Portrait Tablet proto", 8537:5617 "Skin 01 · Landscape Proto".
   Values from the tablet portrait frame (hit area 56, buttons 48, gaps 16) for all sizes (CD).
   Margins: Shared/Breakpoints (Compact 16 · Medium / Expanded 24) + Shared/Design System/Safe Areas.
@@ -87,8 +88,8 @@
   .content::-webkit-scrollbar-track { background: var(--gray6); }
   .content::-webkit-scrollbar-thumb { background: var(--gray3); border-radius: 100px; }
 
-  /* tiles: fill the row, never bigger than the Figma size */
-  .main { display: grid; grid-template-columns: repeat(5, minmax(0, var(--main))); justify-content: space-between; gap: 8px; }
+  /* tiles: never bigger than the Figma size; gap fixed 16 like the sub-tabs, rows start left (v0.2, Daniela's feedback 2026-11-25) */
+  .main { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); }   /* rows go edge to edge, gap 16 */
   .tile {
     aspect-ratio: 1; border: 1px solid var(--gray4); border-radius: 2px; background: var(--gray9);
     padding: 4.2%; display: grid; place-items: center;
@@ -104,7 +105,8 @@
   .sub.on { background: var(--orange); border-color: var(--white); }
   .sub img { width: 40px; height: 40px; }
 
-  .items { display: grid; grid-template-columns: repeat(4, minmax(0, var(--item))); justify-content: space-between; gap: 16px; }
+  /* items: at least 4 per row; wider screens get more 126 columns instead of bigger gaps */
+  .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--item), calc((100% - 3 * var(--gap)) / 4)), 1fr)); gap: var(--gap); }
   .item {
     aspect-ratio: 1; border: 1px solid var(--gray4); border-radius: 2px; background: var(--gray9);
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
@@ -116,6 +118,7 @@
   /* ── 📱 Phone (Compact, short side < 600): margin 16 ── */
   @media (max-width: 599px), (max-height: 599px) and (orientation: landscape) {
     :root { --margin: 16px; --nav-pad: 16px; }
+    .main { gap: 8px; }   /* phone as v0.1 */
     /* phone: touch target 48, visible button 40 (Accessibility: icon smaller than target → hit area does the rest) */
     .hit { width: 48px; height: 48px; }
     .btn { width: 40px; height: 40px; }
