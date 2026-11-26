@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TD-913 Orientation Prototype</title>
+<!--
+  Device preview for the Mac (CD, 2026-11-23): shows app.html at real device sizes (1x, logical px)
+  with a rotate button. On a real phone / tablet (touch screen) it opens app.html directly, full screen.
+-->
+<script>
+  if (matchMedia('(pointer: coarse)').matches) location.replace('app.html' + location.search);
+</script>
+<style>
+  html, body { margin: 0; height: 100%; background: #1e1e1e; overflow: hidden; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  .bar { flex: none; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 12px; }
+  .bar button {
+    font: inherit; font-size: 14px; color: #ddd; background: #333; border: 1px solid #555;
+    border-radius: 6px; padding: 8px 12px; cursor: pointer;
+  }
+  .bar button.on { background: #f50; border-color: #f50; color: #fff; }
+  .bar .size { color: #888; font-size: 13px; align-self: center; min-width: 120px; text-align: center; }
+  .stage { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; }
+  iframe {
+    border: 0; background: #000; border-radius: 24px;
+    box-shadow: 0 0 0 10px #000, 0 20px 60px rgba(0,0,0,.6); transform-origin: center;
+  }
+</style>
+</head>
+<body>
+<div class="bar" id="bar">
+  <button data-d="phone">📱 iPhone</button>
+  <button data-d="android">🤖 Android phone</button>
+  <button data-d="mini">iPad mini</button>
+  <button data-d="pro">iPad Pro 13″</button>
+  <button id="rot">🔄 Rotate</button>
+  <span class="size" id="size"></span>
+</div>
+<div class="stage" id="stage"><iframe id="app" title="TD-913 orientation prototype"></iframe></div>
+<script>
+  // Logical sizes in portrait (pt / dp / CSS px)
+  const DEVICES = {
+    phone:   { w: 390,  h: 844,  name: 'iPhone 14' },
+    android: { w: 360,  h: 800,  name: 'Android phone' },
+    mini:    { w: 744,  h: 1133, name: 'iPad mini' },
+    pro:     { w: 1032, h: 1376, name: 'iPad Pro 13″' },
+  };
+  const f = document.getElementById('app'), stage = document.getElementById('stage');
+  const q = new URLSearchParams(location.search);
+  let dev = q.get('d') in DEVICES ? q.get('d') : 'mini';
+  let land = q.get('o') === 'l';
+  f.src = 'app.html?v=' + Date.now();   // always the newest app.html (no cache)
+
+  function show() {
+    const d = DEVICES[dev], w = land ? d.h : d.w, h = land ? d.w : d.h;
+    f.style.width = w + 'px'; f.style.height = h + 'px';
+    const s = Math.min(1, (stage.clientHeight - 40) / h, (stage.clientWidth - 40) / w);
+    f.style.transform = 'scale(' + s + ')';
+    document.querySelectorAll('[data-d]').forEach(b => b.classList.toggle('on', b.dataset.d === dev));
+    document.getElementById('size').textContent = d.name + ' · ' + w + ' × ' + h + (s < 1 ? ' (' + Math.round(s * 100) + ' %)' : '');
+    history.replaceState(null, '', '?d=' + dev + (land ? '&o=l' : ''));
+  }
+  document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { dev = b.dataset.d; show(); });
+  document.getElementById('rot').onclick = () => { land = !land; show(); };
+  addEventListener('resize', show);
+  show();
+</script>
+</body>
+</html>
