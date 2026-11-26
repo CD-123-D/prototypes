@@ -127,6 +127,12 @@
     .fertig { min-width: 80px; min-height: 40px; padding: 6px 12px; font-size: 20px; line-height: 28px; }
   }
 
+  /* ── 🖥️ Large tablet (iPad Pro 13, both orientations): sub-tabs 72, icon 52 (CD, 2026-11-26; shows devs how they scale) ── */
+  @media (min-width: 1000px) and (min-height: 1000px) {
+    :root { --sub: 72px; }
+    .sub img { width: 52px; height: 52px; }
+  }
+
   /* ── 🔄 Landscape: avatar left, content right ── */
   @media (orientation: landscape) {
     .body { flex-direction: row; gap: 8px; }
