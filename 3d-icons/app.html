@@ -19,13 +19,16 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; -webkit-tap-highlight-color: transparent; }
   body { display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; }
   .bg { flex: 1; min-height: 0; background: #fff url(assets/bg_home.png) center / cover no-repeat; }
-  .menu { flex: none; position: relative; background: #fff; box-shadow: var(--shadow); padding-bottom: var(--safe-bottom); }
+  /* Tighter bar (CD, 2026-11-27 test): icons may sit SAFE_OVERLAP px inside the bottom safe area */
+  .menu { flex: none; position: relative; background: #fff; box-shadow: var(--shadow);
+          padding-bottom: max(0px, calc(var(--safe-bottom) - var(--safe-overlap, 16px))); }
+  .clip { overflow: hidden; }
   canvas { display: block; width: 100%; }
 </style>
 </head>
 <body>
 <div class="bg"></div>
-<div class="menu"><canvas id="menu"></canvas></div>
+<div class="menu"><div class="clip" id="clip"><canvas id="menu"></canvas></div></div>
 
 <script src="assets/runtime/rive.js"></script>
 <script>
@@ -54,10 +57,19 @@ function scaleFactor() {
 }
 function iconSize(w) { return clamp(0.76 * clamp(0.2 * w, 72, 128), 56, 96); }
 
+// Top white above the icons: the .riv pads 1.8 % of the width (~15 on a phone in landscape).
+// Test: cut it to TOP_PAD by hiding the extra top of the canvas (if CD likes it → fixed padding in Rive).
+const TOP_PAD = 8;
+const clip = document.getElementById('clip');
+
 let r = null, soundVM = null;
 function size() {
   const s = scaleFactor();
-  canvas.style.height = Math.round(barHeight(innerWidth / s) * s) + 'px';
+  const h = Math.round(barHeight(innerWidth / s) * s);
+  const cut = Math.max(0, Math.round(0.018 * innerWidth - TOP_PAD));
+  canvas.style.height = h + 'px';
+  canvas.style.marginTop = -cut + 'px';
+  clip.style.height = (h - cut) + 'px';
   if (r) { r.layout = new rive.Layout({ fit: rive.Fit.Layout, layoutScaleFactor: s }); r.resizeDrawingSurfaceToCanvas(); }
 }
 size();
