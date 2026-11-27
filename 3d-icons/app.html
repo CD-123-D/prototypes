@@ -40,21 +40,31 @@ const canvas = document.getElementById('menu');
 // Bar height from the Rive layout (dev note): slot = 20 % of width (72–128),
 // icon = 76 % of slot (56–96), height ≈ 1.8 % of width + icon + 8.
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-function barHeight(w) {
-  const icon = clamp(0.76 * clamp(0.2 * w, 72, 128), 56, 96);
-  return Math.round(0.018 * w + icon + 8);
+function barHeight(w) { return 0.018 * w + iconSize(w) + 8; }
+
+// Phone in landscape (height < 480 = "compact height", Breakpoints draft): the width alone
+// would give tablet icons (96) on a 390-high screen. Scale the whole Rive layout down
+// so the icons keep phone size (~60).
+const COMPACT_HEIGHT = 480, PHONE_ICON = 60;
+function scaleFactor() {
+  if (innerHeight >= COMPACT_HEIGHT) return 1;
+  let s = 1;
+  for (let i = 0; i < 4; i++) s = Math.min(1, PHONE_ICON / iconSize(innerWidth / s));
+  return s;
 }
+function iconSize(w) { return clamp(0.76 * clamp(0.2 * w, 72, 128), 56, 96); }
 
 let r = null, soundVM = null;
 function size() {
-  canvas.style.height = barHeight(innerWidth) + 'px';
-  if (r) r.resizeDrawingSurfaceToCanvas();
+  const s = scaleFactor();
+  canvas.style.height = Math.round(barHeight(innerWidth / s) * s) + 'px';
+  if (r) { r.layout = new rive.Layout({ fit: rive.Fit.Layout, layoutScaleFactor: s }); r.resizeDrawingSurfaceToCanvas(); }
 }
 size();
 
 r = new rive.Rive({
   src: RIV, canvas, artboard: ARTBOARD, stateMachines: SM, autoplay: true, autoBind: true,
-  layout: new rive.Layout({ fit: rive.Fit.Layout, layoutScaleFactor: 1 }),
+  layout: new rive.Layout({ fit: rive.Fit.Layout, layoutScaleFactor: scaleFactor() }),
   onLoad: () => {
     r.resizeDrawingSurfaceToCanvas();
     const vm = r.viewModelInstance;
