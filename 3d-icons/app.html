@@ -25,11 +25,25 @@
           padding-bottom: var(--safe-bottom); }
   .phone .menu { padding-bottom: 0; }
   .clip { overflow: hidden; }
+  /* Prototype-only sound switch on a real phone / tablet (in the app it lives in the parents' settings).
+     Hidden in the Mac preview (index.html has its own "Sound on" button). Target 48, visible 40. */
+  .snd { position: fixed; z-index: 2; width: 48px; height: 48px; padding: 4px; border: 0; background: none;
+         top: calc(env(safe-area-inset-top, 0px) + 8px); right: calc(env(safe-area-inset-right, 0px) + 8px); cursor: pointer; }
+  .snd span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+              background: rgba(255,255,255,.8); box-shadow: 0 2px 8px rgba(58,46,40,.15); }
+  .snd svg { width: 22px; height: 22px; }
+  .snd .off, .snd.muted .on { display: none; }
+  .snd.muted .off { display: block; }
+  .inframe .snd { display: none; }
   canvas { display: block; width: 100%; }
 </style>
 </head>
 <body>
 <div class="bg"></div>
+<button class="snd" id="snd" aria-label="Sound on / off"><span>
+  <svg class="on" viewBox="0 0 24 24" fill="none" stroke="#3A2E28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="#3A2E28"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+  <svg class="off" viewBox="0 0 24 24" fill="none" stroke="#3A2E28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="#3A2E28"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
+</span></button>
 <div class="menu"><div class="clip" id="clip"><canvas id="menu"></canvas></div></div>
 
 <script src="assets/runtime/rive.js"></script>
@@ -98,6 +112,14 @@ addEventListener('resize', size);
 addEventListener('message', e => {
   if (e.data && 'soundOn' in e.data && soundVM) soundVM.value = !!e.data.soundOn;
 });
+// Real phone / tablet: prototype-only sound button (hidden inside the Mac preview iframe)
+if (window.self !== window.top) document.documentElement.classList.add('inframe');
+const sndBtn = document.getElementById('snd');
+sndBtn.onclick = () => {
+  if (!soundVM) return;
+  soundVM.value = !soundVM.value;
+  sndBtn.classList.toggle('muted', !soundVM.value);
+};
 </script>
 </body>
 </html>
