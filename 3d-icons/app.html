@@ -19,9 +19,11 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; -webkit-tap-highlight-color: transparent; }
   body { display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; }
   .bg { flex: 1; min-height: 0; background: #fff url(assets/bg_home.png) center / cover no-repeat; }
-  /* Tighter bar (CD, 2026-11-27 test): icons may sit SAFE_OVERLAP px inside the bottom safe area */
+  /* Option B (CD, 2026-11-27, Figma iPhone 13): on PHONES the icons sit inside the home-indicator
+     area → no white below the Rive bar (bar = 8 + icon + 8). Tablets: safe area below (not decided). */
   .menu { flex: none; position: relative; background: #fff; box-shadow: var(--shadow);
-          padding-bottom: max(0px, calc(var(--safe-bottom) - var(--safe-overlap, 16px))); }
+          padding-bottom: var(--safe-bottom); }
+  .phone .menu { padding-bottom: 0; }
   .clip { overflow: hidden; }
   canvas { display: block; width: 100%; }
 </style>
@@ -48,7 +50,8 @@ function barHeight(w) { return 0.018 * w + iconSize(w) + 8; }
 // Phone in landscape (height < 480 = "compact height", Breakpoints draft): the width alone
 // would give tablet icons (96) on a 390-high screen. Scale the whole Rive layout down
 // so the icons keep phone size (~60).
-const COMPACT_HEIGHT = 480, PHONE_ICON = 60;
+const COMPACT_HEIGHT = 480, PHONE_ICON = 56;   // 56 = Figma iPhone 13 frames
+const isPhone = () => Math.min(innerWidth, innerHeight) < 600;
 function scaleFactor() {
   if (innerHeight >= COMPACT_HEIGHT) return 1;
   let s = 1;
@@ -58,15 +61,18 @@ function scaleFactor() {
 function iconSize(w) { return clamp(0.76 * clamp(0.2 * w, 72, 128), 56, 96); }
 
 // Top white above the icons: the .riv pads 1.8 % of the width (~15 on a phone in landscape).
-// Test: cut it to TOP_PAD by hiding the extra top of the canvas (if CD likes it → fixed padding in Rive).
+// Phones (option B): top = TOP_PAD → the extra top of the canvas is hidden. Tablets unchanged.
+// (Rive fix later: fixed top padding 8 for phones — waits for the tablet decision.)
 const TOP_PAD = 8;
 const clip = document.getElementById('clip');
 
 let r = null, soundVM = null;
 function size() {
+  const phone = isPhone();
+  document.documentElement.classList.toggle('phone', phone);
   const s = scaleFactor();
   const h = Math.round(barHeight(innerWidth / s) * s);
-  const cut = Math.max(0, Math.round(0.018 * innerWidth - TOP_PAD));
+  const cut = phone ? Math.max(0, Math.round(0.018 * innerWidth - TOP_PAD)) : 0;
   canvas.style.height = h + 'px';
   canvas.style.marginTop = -cut + 'px';
   clip.style.height = (h - cut) + 'px';
